@@ -1,0 +1,16 @@
+{
+  "name": "pnppp",
+  "version": "1.0.0",
+  "description": "Pick & Place Pre-processor",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test",
+    "start": "node index.js"
+  },
+  "author": "Dennis Bemmann",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "csv": "^5.4.0",
+    "node-watch": "^0.7.1"
+  }
+}

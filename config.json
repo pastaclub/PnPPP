@@ -1,0 +1,14 @@
+{
+  "baseDir": "/Users/dennis/Dropbox/PCB",
+  "pnp": {
+    "filePattern": "(.*\/)Outputs/Pick Place\/Pick Place for ([^.]*).csv",
+    "outputFileName": "pnp.csv",
+    "columns": {
+      "Designator": "Designator",
+      "Mid X": "Mid X",
+      "Mid Y": "Mid Y",
+      "Layer": "Layer",
+      "Rotation": "Rotation"
+    }
+  }
+}
