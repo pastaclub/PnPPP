@@ -1,5 +1,15 @@
 {
   "baseDir": "/Users/dennis/Dropbox/PCB",
+  "bom": {
+    "filePattern": "(.*\/)Outputs/BOM\/BOM_PartType-([^.]*).csv",
+    "outputFileName": "bom.csv",
+    "columns": {
+      "Comment": "Comment",
+      "Designator": "Designator",
+      "Footprint": "Footprint",
+      "LCSC": "LCSC Part #"
+    }
+  },
   "pnp": {
     "filePattern": "(.*\/)Outputs/Pick Place\/Pick Place for ([^.]*).csv",
     "outputFileName": "pnp.csv",
