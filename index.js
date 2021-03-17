@@ -21,14 +21,27 @@ function quit(msg) {
 }
 
 function selectColumns(data, colConfig) {  // restrict to relevant columns and rename them
+  var data2 = [];
   for (var i=0; i<data.length; i++) {
     var part = {};
-    Object.keys(colConfig).forEach((oldColName) => {
+    Object.keys(colConfig).forEach((oldColName) => { // copy relevant columns
       var newColName = colConfig[oldColName];
       part[newColName] = data[i][oldColName];
     });
-    data[i] = part;        
+    part.autoRotation = data[i][config.autoRotation.parameter]; // copy auto-rotation parameter
+    data2[i] = part;
   }
+  return data2;
+}
+
+function removeExtraFields(data) { // remove extra fields not wanted in CSV output
+  var data2 = [];
+  data.forEach((item) => {
+    item = Object.assign({}, item); // copy
+    delete item.autoRotation;
+    data2.push(item);
+  });
+  return data2;
 }
 
 function writeCSV(data, fileName) {
@@ -40,13 +53,56 @@ function writeCSV(data, fileName) {
 }
 
 function processBom(data, projectPath) {
-  selectColumns(data, config.bom.columns); // restrict to relevant columns and rename them
-  writeCSV(data, projectPath + config.bom.outputFileName); // generate new pick and place file
+  data = selectColumns(data, config.bom.columns); // restrict to relevant columns and rename them
+  cache['bom_'+projectPath] = data;
+  data = removeExtraFields(data);
+  if (cache['pnp_'+projectPath]) crossProcess(projectPath); // if we also have PNP, cross-process
+  else writeCSV(data, projectPath + config.bom.outputFileName); // otherwise just generate new BOM file
 }
 
 function processPnp(data, projectPath) {
-  selectColumns(data, config.pnp.columns); // restrict to relevant columns and rename them
-  writeCSV(data, projectPath + config.pnp.outputFileName); // generate new pick and place file
+  data = selectColumns(data, config.pnp.columns); // restrict to relevant columns and rename them
+  cache['pnp_'+projectPath] = data;
+  data = removeExtraFields(data);
+  if (cache['bom_'+projectPath]) crossProcess(projectPath); // if we also have BOM, cross-process
+  else writeCSV(data, projectPath + config.pnp.outputFileName); // otherwise just generate new pick and place file
+}
+
+function crossProcess(projectPath) { // combine info from BOM and PNP
+  var bom = cache['bom_'+projectPath];
+  var pnp = cache['pnp_'+projectPath];
+  var bom2 = [];
+  var pnp2 = [];
+  var designators;
+  var pnpItem;
+
+  // build map of pnp items
+  var pnpMap = {};
+  pnp.forEach((pnpItem) => {
+    pnpMap[pnpItem.Designator] = pnpItem;
+  });
+
+  // iterate over BOM
+  bom.forEach((bomItem) => {
+    bomItem = Object.assign({}, bomItem); // copy item (to prevent mutating the cached original)
+    designators = bomItem.Designator.split(', '); // get all designators for current BOM item
+    designators.forEach((designator, index) => {  // iterate over all instances of current item
+      pnpItem = pnpMap[designator];
+      pnpItem = Object.assign({}, pnpItem); // copy item (to prevent mutating the cached original)
+      if (config.autoRotation.enabled) {
+        var oldRotation = parseFloat(pnpItem.Rotation);
+        pnpItem.Rotation = oldRotation + (parseFloat(bomItem.autoRotation) || 0);
+        if (pnpItem.Rotation != oldRotation) console.log('Auto-rotating '+designator+'');
+        pnpItem.Rotation = pnpItem.Rotation.toFixed(2);
+      }
+      pnp2.push(pnpItem);
+    });
+  });
+  
+  bom2 = removeExtraFields(bom);
+  pnp2 = removeExtraFields(pnp2);
+  writeCSV(bom2, projectPath + config.bom.outputFileName);
+  writeCSV(pnp2, projectPath + config.pnp.outputFileName);
 }
 
 function detectFileChanges() {
@@ -62,7 +118,7 @@ function detectFileChanges() {
     if (matchBom || matchPnp) {
   
       // read file and split into lines
-      console.log('Processing '+fileName);
+      console.log('Parsing '+fileName);
       var lines = fs.readFileSync(fileName).toString().split(/\r?\n/);
   
       // remove empty lines

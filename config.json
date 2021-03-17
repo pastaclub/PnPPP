@@ -20,5 +20,9 @@
       "Layer": "Layer",
       "Rotation": "Rotation"
     }
+  },
+  "autoRotation": {
+    "enabled": true,
+    "parameter": "JlcRotation"
   }
 }
