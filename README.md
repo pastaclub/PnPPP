@@ -72,7 +72,7 @@ then place this symbol in your schematic file and set its `Comment` to the comma
 If no item with this designator is found in the input BOM, the panelization feature will be disabled
 for the given project. An example of the schematic symbol is shown below:
 
-![image Screenshot of PnPPP_Panel symbol in the schematic editor](./images/pnppp_Panel.png)
+![image Screenshot of PnPPP_Panel symbol in the schematic editor](./images/pnppp_panel.png)
 
 The panelization feature automatically uses the same length unit (`mm`, `mil`, `in`) as the pick-and-place file.
 To keep designators unambiguous, a suffix is appended to all designators, i.e. `C1` becomes `C1_PX2Y3` for the
