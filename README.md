@@ -2,7 +2,7 @@
 
 PnPPP is a tool for automatically converting PCB assembly files to the format required by your fab or machine,
 automatically rotate parts to the correct orientation and duplicate pick-and-place data with new positions
-for the purpose of panelization.
+for the purpose of panelization. All required meta data can be maintained directly within the CAD project.
 
 The tool was developed to process output files from Altium CircuitStudio for use with JLCPCB's self-service
 PCBA interface, but it can be configured flexibly and potentially be used with other CAD programs and
@@ -21,18 +21,19 @@ different fabs.
 ## Auto-Rotation
 
 I frequently ran into the problem that orientation of a part in my library was different than what the fab
-(in my case JLCPCB) expected. As a result, the rotation of the part was wrong in the fab's preview. There
+expected. As a result, the rotation of the part was wrong in the fab's preview. There
 were two ways to fix this: either rotating the graphics in the footprint (which breaks the design) or manually
-editing the generated pick-and-place file and adding an offset to the rotation of all affected components.
+editing the generated pick-and-place file (tedious, error-prone and needed to be done again everytime
+the files were re-exported).
 
-PnPPP solves this problem once and for all: PnPPP automatically rotates components where needed and
+PnPPP solves this problem once and for all: it automatically rotates components as needed and
 generates a modified pick-and-place file in the format the fab expects. In order to do this, PnPPP first
 needs to know which components need to be rotated and by what offset. A different tool relies on a seperate
 file which contains a list of all components to be rotated and the respective angles... from a logical point
 of view however, I found it more appropriate to not have yet another file and instead specify this piece
 of information directly in the component library. To achieve this, I am using a custom parameter named
-`JlcRotation` on every schematic symbol that needs rotation. This parameter is exported as a column in the
-BOM and then added by PnPPP to the rotation of all instances of the respective component.
+`JlcRotation` on every schematic symbol that needs rotation. This parameter is automatically added by
+PnPPP to the rotation of all instances of the respective component.
 
 Note that `Rotation` is a mandatory per-instance parameter (i.e. it can be different for each instance of
 a component on the PCB), while `JlcRotation` is an optional per-symbol parameter (i.e. it is set only once
@@ -49,6 +50,34 @@ By the way: you don't have to use the name `JlcRotation` for the parameter. You 
 parameter name in `config.json` so your library could even contain different rotation offsets for different
 fabs.
 
+## Panelization
+
+The optional panelization feature in PnPPP enables you to automatically generate BOM and pick-and-place files
+for 1- or 2-dimensional PCB panels. If using this feature, PnPPP automatically duplicates all components
+multiple times and adjusts the position of the copies to accomodate for a panel with multiple instances
+of the same PCB. The meta-data required can be edited conveniently within your schematic file.
+
+This feature is useful if you want to manually panelize a PCB. While CircuitStudio supports embedded board
+arrays (which allows you to generate gerbers for a panel), CircuitStudio can still only export BOM and pick-and-place
+files for a single PCB and not the whole panel. This is where PnPPP comes in: it takes the files for a
+single PCB as an input and outputs files for the panel.
+
+In order to use this feature, PnPPP requires 6 values: the number of columns and rows, the
+x and y offset of the bottom-leftmost PCB within the panel and the x and y spacing between boards. Since it
+makes a lot of sense to maintain this information within the CAD project instead of an external configuration
+file, PnPPP retrieves this information from a single special item within the BOM, named `PnPPP_Panel`.
+It is recommended that you create a schematic symbol with the default designator `PnPPP_Panel` and
+the type `Mechanical` (which puts the item in the BOM but not on the PCB). You can
+then place this symbol in your schematic file and set its `Comment` to the comma-seperated 6 values.
+If no item with this designator is found in the input BOM, the panelization feature will be disabled
+for the given project. An example of the schematic symbol is shown below:
+
+![image Screenshot of PnPPP_Panel symbol in the schematic editor](./images/pnppp_Panel.png)
+
+The panelization feature automatically uses the same length unit (`mm`, `mil`, `in`) as the pick-and-place file.
+To keep designators unambiguous, a suffix is appended to all designators, i.e. `C1` becomes `C1_PX2Y3` for the
+2nd column and 3rd row.
+
 ## Installation
 
 PnPPP is an application based on NodeJS. It was developed and tested on a Mac, processing files on a
@@ -58,18 +87,25 @@ specific installation instructions. The following is what works on Mac:
 
 1. Install NodeJS (and npm, which is normally included) if you don't already have them
 2. Clone the repository, and in that folder run `npm install` to install the dependencies
+3. Edit the `config.json` file (see Configuration)
+
+PnPPP has no project-specific arguments or settings. This means you only need to setup the tool once
+and you can then use it for all of your PCBs without having to change anything. All required
+information can be maintained directly within the respective CAD projects.
 
 ## Operation
 
-1. Edit the `config.json` file (see Configuration)
-2. Run `npm start`. It will keep running and process any changed files
-3. Generate output files in CircuitStudio - PnPPP will automatically detect and process those
-4. Abort PnPPP by pressing `ctrl+c`
+1. Run `npm start`. It will keep running and process any changed files
+2. Generate output files in CircuitStudio - PnPPP will automatically detect and process those
+3. Abort PnPPP by pressing `ctrl+c`
 
-*Important:* for Auto-Rotation and Panelization to work, make sure you (re-)generate BOTH a PNP and a BOM file
+If you want to simply have the tool working at all times, you can configure your computer to
+automatically run it when the OS boots. PnPPP will run in the background and use almost no system resources.
+
+*Important:* for Auto-Rotation and Panelization to work, make sure you (re-)generate **both** a PNP and a BOM file
 for a project at least once after PnPPP is started. It is NOT sufficient to generate just one of them, even if
-the other one already exists. This is related to the non-deterministic order of processing changes and data
-caching. You can easily ensure this by using the `Generate outputs` dialog in CircuitStudio and ticking the relevant checkboxes.
+the other one already exists. You can easily ensure this by using the `Generate outputs` dialog in CircuitStudio
+and keeping both checkboxes ticked. Don't like this limitation? Fork PnPPP and improve it, it's open source.
 
 ## Configuration (only required once)
 
@@ -91,3 +127,7 @@ which specifies the additional rotation of its instances.
 - Under File Format, select `CSV`, then click `OK`
 - Back in the `Generate outputs` dialog, under `Assembly`, check `Pick and place` and also configure it to output `CSV`
 - Now whenever you click `Generate` in this dialog, PnPPP will automatically process the output files. That is, if PnPPP is running of course, duh :)
+
+## Frequently asked questions
+
+- **Does PnPPP panelize Gerber files?** No. But it can generate pick-and-place files for panelized boards from a single board.

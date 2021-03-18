@@ -24,5 +24,10 @@
   "autoRotation": {
     "enabled": true,
     "parameter": "JlcRotation"
+  },
+  "panelization": {
+    "designator": "PnPPP_Panel",
+    "xName": "Mid X",
+    "yName": "Mid Y"
   }
 }

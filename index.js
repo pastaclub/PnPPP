@@ -39,7 +39,7 @@ function removeExtraFields(data) { // remove extra fields not wanted in CSV outp
   data.forEach((item) => {
     item = Object.assign({}, item); // copy
     delete item.autoRotation;
-    data2.push(item);
+    if (item.Designator != config.panelization.designator) data2.push(item);
   });
   return data2;
 }
@@ -68,13 +68,38 @@ function processPnp(data, projectPath) {
   else writeCSV(data, projectPath + config.pnp.outputFileName); // otherwise just generate new pick and place file
 }
 
+function parseValue(str) {
+  var value = parseFloat(str);
+  var unit = str.substr(value.toString(10).length);
+  return {value, unit};
+}
+
 function crossProcess(projectPath) { // combine info from BOM and PNP
   var bom = cache['bom_'+projectPath];
   var pnp = cache['pnp_'+projectPath];
   var bom2 = [];
   var pnp2 = [];
-  var designators;
-  var pnpItem;
+
+  // get panelization data from BOM
+  var panel;
+  bom.forEach((bomItem) => {
+    if (bomItem.Designator == config.panelization.designator) {
+      panel = bomItem.Comment.split(',');
+      panel.forEach((value, index) => {
+        panel[index] = parseFloat(value);
+      });
+      panel = {
+        columns:  panel[0],
+        rows:     panel[1],
+        xOffset:  panel[2],
+        yOffset:  panel[3],
+        xSpacing: panel[4],
+        ySpacing: panel[5]
+      }
+    }
+  });
+  if (panel) console.log('Panelization data found for a '+panel.columns+'x'+panel.rows+' panel');
+  else console.log('No '+config.panelization.designator+' designator in BOM => Panelization disabled for this project');
 
   // build map of pnp items
   var pnpMap = {};
@@ -85,21 +110,45 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
   // iterate over BOM
   bom.forEach((bomItem) => {
     bomItem = Object.assign({}, bomItem); // copy item (to prevent mutating the cached original)
-    designators = bomItem.Designator.split(', '); // get all designators for current BOM item
+    var designators = bomItem.Designator.split(', '); // get all designators for current BOM item
+    var designators2 = [];
     designators.forEach((designator, index) => {  // iterate over all instances of current item
-      pnpItem = pnpMap[designator];
-      pnpItem = Object.assign({}, pnpItem); // copy item (to prevent mutating the cached original)
-      if (config.autoRotation.enabled) {
-        var oldRotation = parseFloat(pnpItem.Rotation);
-        pnpItem.Rotation = oldRotation + (parseFloat(bomItem.autoRotation) || 0);
-        if (pnpItem.Rotation != oldRotation) console.log('Auto-rotating '+designator+'');
-        pnpItem.Rotation = pnpItem.Rotation.toFixed(2);
+      var pnpItem = pnpMap[designator];
+      if (pnpItem) {
+        pnpItem = Object.assign({}, pnpItem); // copy item (to prevent mutating the cached original)
+
+        // auto-rotation
+        if (config.autoRotation.enabled) {
+          var oldRotation = parseFloat(pnpItem.Rotation);
+          pnpItem.Rotation = oldRotation + (parseFloat(bomItem.autoRotation) || 0);
+          if (pnpItem.Rotation != oldRotation) console.log('Auto-rotating '+designator+'');
+          pnpItem.Rotation = pnpItem.Rotation.toFixed(2);
+        }
+
+        // panelization
+        if (panel) {
+          for (var y=0; y<panel.rows; y++)
+            for (var x=0; x<panel.columns; x++) {
+              var pnpItem2 = Object.assign({}, pnpItem);
+              pnpItem2.Designator = pnpItem.Designator + '_PX' + x + 'Y' + y;
+              designators2.push(pnpItem2.Designator);
+              var vx = parseValue(pnpItem[config.panelization.xName]);
+              var vy = parseValue(pnpItem[config.panelization.yName]);
+              pnpItem2[config.panelization.xName] = (panel.xOffset + x * panel.xSpacing + vx.value) + vx.unit;
+              pnpItem2[config.panelization.yName] = (panel.xOffset + y * panel.ySpacing + vy.value) + vy.unit;
+              pnp2.push(pnpItem2);
+          }
+        } else pnp2.push(pnpItem);
+
       }
-      pnp2.push(pnpItem);
     });
+    if ((panel) && (bomItem.Designator != config.panelization.designator)) {
+      bomItem.Designator = designators2.join(', '); // replace designators in BOM with panelized list (but not the PnPPP_Panel itself)
+    }
+    bom2.push(bomItem);
   });
-  
-  bom2 = removeExtraFields(bom);
+
+  bom2 = removeExtraFields(bom2);
   pnp2 = removeExtraFields(pnp2);
   writeCSV(bom2, projectPath + config.bom.outputFileName);
   writeCSV(pnp2, projectPath + config.pnp.outputFileName);
