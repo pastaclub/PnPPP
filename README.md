@@ -13,10 +13,12 @@ different fabs.
 * Parse and re-generate BOM (bill of materials) and PNP (pick and place) files in CSV format
 * Continuously scan sub directories of a given file path for changes and automatically process changed files
 * Rename, re-order and delete columns in BOM and PNP files
-* Strip empty lines from incoming CSV files to make them compliant (what were you thinking, Altium?)
+* Remove extra lines not conforming with the CSV format (what were you thinking, Altium?)
 * Move output files to alternate destination path
 * Auto-rotation: rotate parts in pick-and-place file based on per-component setting in the BOM file
-* Customizable through a config file in JSON format
+* Panelization: duplicate pick-and-place information with ajusted coordinates to generate PCB panels from a single board
+* All meta data (for auto-rotation, panelization etc.) can be managed from within the CAD project
+* Input and output format customizable through a JSON config file
 
 ## Auto-Rotation
 
@@ -130,4 +132,9 @@ which specifies the additional rotation of its instances.
 
 ## Frequently asked questions
 
-- **Does PnPPP panelize Gerber files?** No. But it can generate pick-and-place files for panelized boards from a single board.
+- **Can I use Ref X / Ref Y instead of Mid X / Mid Y?** Yes, simply adapt the config file. Note that the column name in the `panelization`
+section have to match the (selected or renamed) columns in the `columns` section.
+- **Do I have to enter the path to my project as `basePath`?** No. You can do that if you only ever work on a single project. But normally you would enter the directory which all your PCB projects reside in. PnPPP is smart enough to tell them apart.
+- **Does PnPPP panelize Gerber files?** No. PnPPP can generate pick-and-place files for panelized boards from a single board. You can use other tools
+(or an embedded board array in CircuitStudio) to panelize the Gerbers.
+- **Does it run on Windows?** Probably, but I haven't tried. It's interpreted code, so there is no machine-specific binary.
