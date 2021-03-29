@@ -178,10 +178,18 @@ function detectFileChanges() {
       // remove empty lines
       var text = '';
       for (var i=0; i<lines.length; i++) if (lines[i].length > 5) text += lines[i] + "\r\n";
+
   
       // parse CSV
       csv.parse(text, {columns: true}, (err, data) => {
         if (err) quit('Unable to parse CSV');
+        if (data.length == 0) quit('File contains no data');
+        if (matchBom) {
+          if (config.autoRotation.enabled && (!(Object.keys(data[0]).includes(config.autoRotation.parameter)))) {
+            console.log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
+          }
+          processBom(data, matchBom[1]);
+        }
         if (matchPnp) processPnp(data, matchPnp[1]);
       }); 
     }
