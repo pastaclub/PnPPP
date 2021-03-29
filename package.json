@@ -8,7 +8,7 @@
     "start": "node index.js"
   },
   "author": "Dennis Bemmann",
-  "license": "UNLICENSED",
+  "license": "GPLv3",
   "dependencies": {
     "csv": "^5.4.0",
     "node-watch": "^0.7.1"
