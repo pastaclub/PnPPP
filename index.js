@@ -119,9 +119,11 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
 
         // auto-rotation
         if (config.autoRotation.enabled) {
-          var oldRotation = parseFloat(pnpItem.Rotation);
-          pnpItem.Rotation = oldRotation + (parseFloat(bomItem.autoRotation) || 0);
-          if (pnpItem.Rotation != oldRotation) console.log('Auto-rotating '+designator+'');
+          var oldRotation = (parseFloat(pnpItem.Rotation) + 360) % 360;
+          pnpItem.Rotation = (oldRotation + (parseFloat(bomItem.autoRotation) || 0) + 360) % 360;
+          if (pnpItem.Rotation != oldRotation) {
+            console.log('Auto-rotating '+designator+': '+oldRotation+' -> '+pnpItem.Rotation);
+          }
           pnpItem.Rotation = pnpItem.Rotation.toFixed(2);
         }
 
@@ -134,8 +136,8 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
               designators2.push(pnpItem2.Designator);
               var vx = parseValue(pnpItem[config.panelization.xName]);
               var vy = parseValue(pnpItem[config.panelization.yName]);
-              pnpItem2[config.panelization.xName] = (panel.xOffset + x * panel.xSpacing + vx.value) + vx.unit;
-              pnpItem2[config.panelization.yName] = (panel.xOffset + y * panel.ySpacing + vy.value) + vy.unit;
+              pnpItem2[config.panelization.xName] = (panel.xOffset + x * panel.xSpacing + vx.value).toFixed(4) + vx.unit;
+              pnpItem2[config.panelization.yName] = (panel.xOffset + y * panel.ySpacing + vy.value).toFixed(4) + vy.unit;
               pnp2.push(pnpItem2);
           }
         } else pnp2.push(pnpItem);
@@ -177,7 +179,6 @@ function detectFileChanges() {
       // parse CSV
       csv.parse(text, {columns: true}, (err, data) => {
         if (err) quit('Unable to parse CSV');
-        if (matchBom) processBom(data, matchBom[1]);
         if (matchPnp) processPnp(data, matchPnp[1]);
       }); 
     }
