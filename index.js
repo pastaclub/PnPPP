@@ -108,6 +108,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
   });
 
   // iterate over BOM
+  var rotateCount = 0;
   bom.forEach((bomItem) => {
     bomItem = Object.assign({}, bomItem); // copy item (to prevent mutating the cached original)
     var designators = bomItem.Designator.split(', '); // get all designators for current BOM item
@@ -123,6 +124,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
           pnpItem.Rotation = (oldRotation + (parseFloat(bomItem.autoRotation) || 0) + 360) % 360;
           if (pnpItem.Rotation != oldRotation) {
             console.log('Auto-rotating '+designator+': '+oldRotation+' -> '+pnpItem.Rotation);
+            rotateCount++;
           }
           pnpItem.Rotation = pnpItem.Rotation.toFixed(2);
         }
@@ -149,6 +151,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
     }
     bom2.push(bomItem);
   });
+  console.log(rotateCount + ' components were auto-rotated.');
 
   bom2 = removeExtraFields(bom2);
   pnp2 = removeExtraFields(pnp2);
