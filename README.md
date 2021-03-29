@@ -12,13 +12,13 @@ different fabs.
 
 * Parse and re-generate BOM (bill of materials) and PNP (pick and place) files in CSV format
 * Continuously scan sub directories of a given file path for changes and automatically process changed files
+* Auto-rotation: further rotate parts in pick-and-place file based on per-component setting in the BOM file
+* Panelization: duplicate pick-and-place information with adjusted coordinates to generate PCB panels from a single board
 * Rename, re-order and delete columns in BOM and PNP files
 * Remove extra lines not conforming with the CSV format (what were you thinking, Altium?)
 * Move output files to alternate destination path
-* Auto-rotation: rotate parts in pick-and-place file based on per-component setting in the BOM file
-* Panelization: duplicate pick-and-place information with ajusted coordinates to generate PCB panels from a single board
 * All meta data (for auto-rotation, panelization etc.) can be managed from within the CAD project
-* Input and output format customizable through a JSON config file
+* Input and output format customizable through a JSON config file (needed only once, not per project)
 
 ## Auto-Rotation
 
@@ -30,23 +30,24 @@ the files were re-exported).
 
 PnPPP solves this problem once and for all: it automatically rotates components as needed and
 generates a modified pick-and-place file in the format the fab expects. In order to do this, PnPPP first
-needs to know which components need to be rotated and by what offset. A different tool relies on a seperate
-file which contains a list of all components to be rotated and the respective angles... from a logical point
-of view however, I found it more appropriate to not have yet another file and instead specify this piece
-of information directly in the component library. To achieve this, I am using a custom parameter named
+needs to know which components need to be rotated and by what offset. Other tools rely on seperate
+files cotaining that information... however, from a logical point of view, this information is
+associated with the definition of a component, so I found it more logical to manage it where
+the component is defined: in the schematic library itself.
+To achieve this, I am using a custom parameter named
 `JlcRotation` on every schematic symbol that needs rotation. This parameter is automatically added by
 PnPPP to the rotation of all instances of the respective component.
 
 Note that `Rotation` is a mandatory per-instance parameter (i.e. it can be different for each instance of
 a component on the PCB), while `JlcRotation` is an optional per-symbol parameter (i.e. it is set only once
-per each schematic symbol and applied to all instances of the part). The engineers at Altium in their
-infinite wisdom provided no possibility for CircuitStudio users to configure which fields to export as part
-of a pick-and-place file, therefore PnPPP pulls this information out of the BOM and then applies it on the
-pick-and-place data.
+per each schematic symbol and applied to all instances of the part). CircuitStudio does not let users
+configure which fields to export as part of a pick-and-place file, therefore PnPPP pulls this information
+out of the BOM and then applies it on the pick-and-place data.
 
 So whenever you find the rotation of a part to be incorrect, you can simply open the schematic symbol in
 your library, add a `JlcRotation` parameter, and let PnPPP do the work. From then on, whenever you use
-the `Generate outputs` feature, PnPPP will know what to do and automatically fix your pick-and-place files.
+the `Generate outputs` feature, PnPPP will know what to do and automatically fix your pick-and-place files,
+in your current project as well as in all future projects until the end of days.
 
 By the way: you don't have to use the name `JlcRotation` for the parameter. You can configure a custom
 parameter name in `config.json` so your library could even contain different rotation offsets for different
