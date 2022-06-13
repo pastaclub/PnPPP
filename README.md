@@ -17,6 +17,7 @@ different fabs.
 * Rename, re-order and delete columns in BOM and PNP files
 * Remove extra lines not conforming with the CSV format (what were you thinking, Altium?)
 * Move output files to alternate destination path
+* Scan for changed gerber / drill files and pack them in a ZIP archive for easy upload
 * All meta data (for auto-rotation, panelization etc.) can be managed from within the CAD project
 * Input and output format customizable through a JSON config file (needed only once, not per project)
 
@@ -81,6 +82,11 @@ The panelization feature automatically uses the same length unit (`mm`, `mil`, `
 To keep designators unambiguous, a suffix is appended to all designators, i.e. `C1` becomes `C1_PX2Y3` for the
 2nd column and 3rd row.
 
+## Zipping gerbers
+
+PCB manufacturers usually expect you to upload gerber and drill files as a ZIP archive. PnPPP automatically
+generates a ZIP each time the gerbers or drill files change, so you don't have to do it manually.
+
 ## Installation
 
 PnPPP is an application based on NodeJS. It was developed and tested on a Mac, processing files on a
@@ -119,6 +125,8 @@ column name and the value is the new name.
 - In the default config, the tool assumes that CircuitStudio is set up to output an additional column named "LCSC" in the PNP file (which is used by JLCPCB to identify the component to be populated). You can remove that line in the config if not used.
 - `autoRotation`: you can configure whether autoRotation is enabled or not. If enabled, you have to specify the name of the parameter in the BOM file
 which specifies the additional rotation of its instances.
+- `gerber`: Specify a RegEx for paths in which to expect gerber and drill files, specify the name of the ZIP archive to be
+created and specify which folders to include.
 
 ## How to set up CircuitStudio
 

@@ -1,9 +1,11 @@
 const fs = require('fs');
 const watch = require('node-watch');
 const csv = require('csv');
-    
+const AdmZip = require('adm-zip');
+
 var config;
 var cache = {};
+var changedGerbers = {}; // properties are paths with changed gerbers that need to be zipped
 
 function readConfig() {
   var config;
@@ -159,16 +161,40 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
   writeCSV(pnp2, projectPath + config.pnp.outputFileName);
 }
 
+async function zipChangedGerbers() {
+  for (const path in changedGerbers) { // get all paths where changes have occurred
+    console.log('Parsing', path);
+    const zip = new AdmZip();
+    const outputFile = path + config.gerber.archiveName;
+    for (const index in config.gerber.folders) {
+      const folder = path + config.gerber.folders[index];
+      zip.addLocalFolder(folder);
+    }
+    zip.writeZip(outputFile);
+    console.log(`Written ${outputFile}`);  
+    delete changedGerbers[path]; // changes processed, so delete
+  }
+}
+
 function detectFileChanges() {
   // watch for file changes
   console.log('Watching '+config.baseDir+' for file changes...');
   const bomRegEx = new RegExp(config.bom.filePattern);
   const pnpRegEx = new RegExp(config.pnp.filePattern);
+  const gerberRegEx = new RegExp(config.gerber.filePattern);
   watch(config.baseDir, {recursive: true}, function(ev, fileName) {
     if (ev != 'update') return; // we only care about update events
 
     const matchBom = fileName.match(bomRegEx);
-    const matchPnp = fileName.match(pnpRegEx);  
+    const matchPnp = fileName.match(pnpRegEx);
+    const matchGerber = fileName.match(gerberRegEx);
+
+    if (matchGerber) {
+      var path = matchGerber[1];
+      changedGerbers[path] = true;
+      // will be zipped periodically (to prevent zipping again and again for each changed file)
+    }
+
     if (matchBom || matchPnp) {
   
       // read file and split into lines
@@ -198,4 +224,5 @@ function detectFileChanges() {
 
 // --- MAIN PROGRAM ---
 config = readConfig();
+setInterval(zipChangedGerbers, 1500);
 detectFileChanges();

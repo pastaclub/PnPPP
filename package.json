@@ -10,6 +10,7 @@
   "author": "Dennis Bemmann",
   "license": "GPLv3",
   "dependencies": {
+    "adm-zip": "^0.5.9",
     "csv": "^5.4.0",
     "node-watch": "^0.7.1"
   }

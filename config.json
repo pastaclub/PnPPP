@@ -21,6 +21,11 @@
       "Rotation": "Rotation"
     }
   },
+  "gerber": {
+    "filePattern": "((.*\/))(Outputs/((Gerber)|(NC Drill))\/([^.]*).([^.]*))",
+    "archiveName": "gerber.zip",
+    "folders": ["Outputs/Gerber", "Outputs/NC Drill"]
+  },
   "autoRotation": {
     "enabled": true,
     "parameter": "JlcRotation"
