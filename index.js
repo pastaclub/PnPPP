@@ -7,6 +7,12 @@ var config;
 var cache = {};
 var changedGerbers = {}; // properties are paths with changed gerbers that need to be zipped
 
+function log(s) {
+  let ts = (new Date()).toISOString();
+  let tss = ts.slice(8,10) + '.' + ts.slice(5,7) + '. ' + ts.slice(11,11+8);
+  console.log(tss + '   ' + s);  
+}
+
 function readConfig() {
   var config;
   try {
@@ -47,7 +53,7 @@ function removeExtraFields(data) { // remove extra fields not wanted in CSV outp
 }
 
 function writeCSV(data, fileName) {
-  console.log('Writing '+fileName);
+  log('Writing '+fileName);
   csv.stringify(data, {header: true, quoted: true, record_delimiter:"\r\n"}, (err, output) => {
     if (err) quit('Unable to transform data back into CSV');
     fs.writeFileSync(fileName, output);
@@ -100,8 +106,8 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
       }
     }
   });
-  if (panel) console.log('Panelization data found for a '+panel.columns+'x'+panel.rows+' panel');
-  else console.log('No '+config.panelization.designator+' designator in BOM => Panelization disabled for this project');
+  if (panel) log('Panelization data found for a '+panel.columns+'x'+panel.rows+' panel');
+  else log('No '+config.panelization.designator+' designator in BOM => Panelization disabled for this project');
 
   // build map of pnp items
   var pnpMap = {};
@@ -125,7 +131,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
           var oldRotation = (parseFloat(pnpItem.Rotation) + 360) % 360;
           pnpItem.Rotation = (oldRotation + (parseFloat(bomItem.autoRotation) || 0) + 360) % 360;
           if (pnpItem.Rotation != oldRotation) {
-            console.log('Auto-rotating '+designator+': '+oldRotation+' -> '+pnpItem.Rotation);
+            log('Auto-rotating '+designator+': '+oldRotation+' -> '+pnpItem.Rotation);
             rotateCount++;
           }
           pnpItem.Rotation = pnpItem.Rotation.toFixed(2);
@@ -153,7 +159,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
     }
     bom2.push(bomItem);
   });
-  console.log(rotateCount + ' components were auto-rotated.');
+  log(rotateCount + ' components were auto-rotated.');
 
   bom2 = removeExtraFields(bom2);
   pnp2 = removeExtraFields(pnp2);
@@ -163,7 +169,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
 
 async function zipChangedGerbers() {
   for (const path in changedGerbers) { // get all paths where changes have occurred
-    console.log('Parsing', path);
+    log('Parsing', path);
     const zip = new AdmZip();
     const outputFile = path + config.gerber.archiveName;
     for (const index in config.gerber.folders) {
@@ -171,14 +177,14 @@ async function zipChangedGerbers() {
       zip.addLocalFolder(folder);
     }
     zip.writeZip(outputFile);
-    console.log(`Written ${outputFile}`);  
+    log(`Written ${outputFile}`);  
     delete changedGerbers[path]; // changes processed, so delete
   }
 }
 
 function detectFileChanges() {
   // watch for file changes
-  console.log('Watching '+config.baseDir+' for file changes...');
+  log('Watching '+config.baseDir+' for file changes...');
   const bomRegEx = new RegExp(config.bom.filePattern);
   const pnpRegEx = new RegExp(config.pnp.filePattern);
   const gerberRegEx = new RegExp(config.gerber.filePattern);
@@ -198,7 +204,7 @@ function detectFileChanges() {
     if (matchBom || matchPnp) {
   
       // read file and split into lines
-      console.log('Parsing '+fileName);
+      log('Parsing '+fileName);
       var lines = fs.readFileSync(fileName).toString().split(/\r?\n/);
   
       // remove empty lines
@@ -212,7 +218,7 @@ function detectFileChanges() {
         if (data.length == 0) quit('File contains no data');
         if (matchBom) {
           if (config.autoRotation.enabled && (!(Object.keys(data[0]).includes(config.autoRotation.parameter)))) {
-            console.log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
+            log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
           }
           processBom(data, matchBom[1]);
         }
