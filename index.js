@@ -64,20 +64,28 @@ function writeCSV(data, fileName) {
   })
 }
 
+function writeBom(data, projectPath) {
+  writeCSV(data, projectPath + config.bom.outputFileName);
+}
+
+function writePnp(data, projectPath) {
+  writeCSV(data, projectPath + config.pnp.outputFileName);
+}
+
 function processBom(data, projectPath) {
-  data = selectColumns(data, config.bom.columns); // restrict to relevant columns and rename them
+  data = selectColumns(data, config.bom.columns);             // restrict to relevant columns and rename them
   cache['bom_'+projectPath] = data;
   data = removeExtraFields(data);
-  if (cache['pnp_'+projectPath]) crossProcess(projectPath); // if we also have PNP, cross-process
-  else writeCSV(data, projectPath + config.bom.outputFileName); // otherwise just generate new BOM file
+  if (cache['pnp_'+projectPath]) crossProcess(projectPath);   // if we also have PNP, cross-process
+  else writeBom(data, projectPath);                           // otherwise just generate new BOM file
 }
 
 function processPnp(data, projectPath) {
-  data = selectColumns(data, config.pnp.columns); // restrict to relevant columns and rename them
+  data = selectColumns(data, config.pnp.columns);             // restrict to relevant columns and rename them
   cache['pnp_'+projectPath] = data;
   data = removeExtraFields(data);
-  if (cache['bom_'+projectPath]) crossProcess(projectPath); // if we also have BOM, cross-process
-  else writeCSV(data, projectPath + config.pnp.outputFileName); // otherwise just generate new pick and place file
+  if (cache['bom_'+projectPath]) crossProcess(projectPath);   // if we also have BOM, cross-process
+  else writePnp(data, projectPath);                           // otherwise just generate new pick and place file
 }
 
 function parseValue(str) {
@@ -167,8 +175,8 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
 
   bom2 = removeExtraFields(bom2);
   pnp2 = removeExtraFields(pnp2);
-  writeCSV(bom2, projectPath + config.bom.outputFileName);
-  writeCSV(pnp2, projectPath + config.pnp.outputFileName);
+  writeBom(bom2, projectPath);
+  writePnp(pnp2, projectPath);
 }
 
 async function zipChangedGerbers() {
