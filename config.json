@@ -3,6 +3,7 @@
   "bom": {
     "filePattern": "(.*\/)Outputs/BOM\/BOM_PartType-([^.]*).csv",
     "outputFileName": "bom.csv",
+    "jsonFileName": "bom.json",
     "columns": {
       "Comment": "Comment",
       "Designator": "Designator",

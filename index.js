@@ -64,8 +64,15 @@ function writeCSV(data, fileName) {
   })
 }
 
+function writeJSON(data, fileName) {
+  log('Writing '+shortenPath(fileName));
+  let output = JSON.stringify(data, 2);
+  fs.writeFileSync(fileName, output);
+}
+
 function writeBom(data, projectPath) {
   writeCSV(data, projectPath + config.bom.outputFileName);
+  writeJSON(data, projectPath + config.bom.jsonFileName);
 }
 
 function writePnp(data, projectPath) {
