@@ -13,6 +13,10 @@ function log(s) {
   console.log(tss + '   ' + s);  
 }
 
+function shortenPath(p) {
+  return p.slice(config.baseDir.length + 1);
+}
+
 function readConfig() {
   var config;
   try {
@@ -53,7 +57,7 @@ function removeExtraFields(data) { // remove extra fields not wanted in CSV outp
 }
 
 function writeCSV(data, fileName) {
-  log('Writing '+fileName);
+  log('Writing '+shortenPath(fileName));
   csv.stringify(data, {header: true, quoted: true, record_delimiter:"\r\n"}, (err, output) => {
     if (err) quit('Unable to transform data back into CSV');
     fs.writeFileSync(fileName, output);
@@ -169,7 +173,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
 
 async function zipChangedGerbers() {
   for (const path in changedGerbers) { // get all paths where changes have occurred
-    log('Parsing', path);
+    log('Parsing', shortenPath(path));
     const zip = new AdmZip();
     const outputFile = path + config.gerber.archiveName;
     for (const index in config.gerber.folders) {
@@ -204,7 +208,7 @@ function detectFileChanges() {
     if (matchBom || matchPnp) {
   
       // read file and split into lines
-      log('Parsing '+fileName);
+      log('Parsing '+shortenPath(fileName));
       var lines = fs.readFileSync(fileName).toString().split(/\r?\n/);
   
       // remove empty lines
