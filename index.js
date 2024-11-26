@@ -66,7 +66,7 @@ function writeCSV(data, fileName) {
 
 function writeJSON(data, fileName) {
   log('Writing '+shortenPath(fileName));
-  let output = JSON.stringify(data, 2);
+  let output = JSON.stringify(data, null, 2);
   fs.writeFileSync(fileName, output);
 }
 
