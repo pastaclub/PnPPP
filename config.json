@@ -8,7 +8,9 @@
       "Comment": "Comment",
       "Designator": "Designator",
       "Footprint": "Footprint",
-      "LCSC": "LCSC Part #"
+      "LCSC": "LCSC Part #",
+      "Quantity": "Quantity",
+      "Description": "Description"
     }
   },
   "pnp": {
