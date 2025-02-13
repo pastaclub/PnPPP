@@ -3,9 +3,10 @@ const watch = require('node-watch');
 const csv = require('csv');
 const AdmZip = require('adm-zip');
 
-var config;
-var cache = {};
-var changedGerbers = {}; // properties are paths with changed gerbers that need to be zipped
+let   config = null;
+const cache = {};
+const changedGerbers = {}; // properties are paths with changed gerbers that need to be zipped
+const changedFiles = {};
 
 function log(s) {
   let ts = (new Date()).toISOString();
@@ -104,7 +105,7 @@ function parseValue(str) {
 function crossProcess(projectPath) { // combine info from BOM and PNP
   var bom = cache['bom_'+projectPath];
   var pnp = cache['pnp_'+projectPath];
-  var bom2 = [];
+  var bom2 = [];
   var pnp2 = [];
 
   // get panelization data from BOM
@@ -188,6 +189,7 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
 
 async function zipChangedGerbers() {
   for (const path in changedGerbers) { // get all paths where changes have occurred
+    delete changedGerbers[path]; // changes are getting processed, so delete from list
     log('Zipping gerbers in ' + shortenPath(path));
     const zip = new AdmZip();
     const outputFile = path + config.gerber.archiveName;
@@ -204,17 +206,56 @@ async function zipChangedGerbers() {
       }
     }
     zip.writeZip(outputFile);
-    log(`Written ${outputFile}`);  
-    delete changedGerbers[path]; // changes processed, so delete
+    log(`Written ${outputFile}`);
+  }
+}
+
+function processFileChanges() {
+  for (const fileName in changedFiles) { // get all files that were changed
+    let changeObj = changedFiles[fileName]; // retrieve change object
+    delete changedFiles[fileName]; // changes are getting processed, so delete from list
+  
+    // read file and split into lines
+    log('Parsing '+shortenPath(fileName));
+    var lines = fs.readFileSync(fileName).toString().split(/\r?\n/);
+
+    // remove empty lines
+    var text = '';
+    for (var i=0; i<lines.length; i++) if (lines[i].length > 5) text += lines[i] + "\r\n";
+
+    // parse CSV
+    csv.parse(text, {columns: true}, (err, data) => {
+      if (err) quit('Unable to parse CSV');
+      if (data.length == 0) quit('File contains no data');
+
+      // if it's a BOM file
+      if (changeObj.bom) {
+        if (config.autoRotation.enabled && (!(Object.keys(data[0]).includes(config.autoRotation.parameter)))) {
+          log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
+        }
+        processBom(data, changeObj.bom);
+      }
+
+      // if it's a PNP file
+      if (changeObj.pnp) {
+        processPnp(data, changeObj.pnp);
+      }
+
+    }); 
   }
 }
 
 function detectFileChanges() {
   // watch for file changes
   log('Watching '+config.baseDir+' for file changes...');
+
   const bomRegEx = new RegExp(config.bom.filePattern);
   const pnpRegEx = new RegExp(config.pnp.filePattern);
   const gerberRegEx = new RegExp(config.gerber.filePattern);
+
+  let zipGerbersTimer = null;
+  let processTimer = null;
+
   watch(config.baseDir, {recursive: true}, function(ev, fileName) {
     if (ev != 'update') return; // we only care about update events
 
@@ -222,40 +263,25 @@ function detectFileChanges() {
     const matchPnp = fileName.match(pnpRegEx);
     const matchGerber = fileName.match(gerberRegEx);
 
-    if (matchGerber) {
+    if (matchGerber) {
       var path = matchGerber[1];
       changedGerbers[path] = true;
-      // will be zipped periodically (to prevent zipping again and again for each changed file)
-    }
+      if (zipGerbersTimer) clearInterval(zipGerbersTimer); // if timer is already active, reset it
+      zipGerbersTimer = setTimeout(zipChangedGerbers, 1500); // process change list after waiting time
 
-    if (matchBom || matchPnp) {
-  
-      // read file and split into lines
-      log('Parsing '+shortenPath(fileName));
-      var lines = fs.readFileSync(fileName).toString().split(/\r?\n/);
-  
-      // remove empty lines
-      var text = '';
-      for (var i=0; i<lines.length; i++) if (lines[i].length > 5) text += lines[i] + "\r\n";
-
-  
-      // parse CSV
-      csv.parse(text, {columns: true}, (err, data) => {
-        if (err) quit('Unable to parse CSV');
-        if (data.length == 0) quit('File contains no data');
-        if (matchBom) {
-          if (config.autoRotation.enabled && (!(Object.keys(data[0]).includes(config.autoRotation.parameter)))) {
-            log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
-          }
-          processBom(data, matchBom[1]);
-        }
-        if (matchPnp) processPnp(data, matchPnp[1]);
-      }); 
+    } else if (matchBom || matchPnp) {
+      // log('File changed (waiting for more changes): '+shortenPath(fileName));
+      const changeObj = {
+        bom: matchBom? matchBom[1] : null,
+        pnp: matchPnp? matchPnp[1] : null
+      }
+      changedFiles[fileName] = changeObj; // remeber that a file was changed
+      if (processTimer) clearInterval(processTimer); // if timer is already active, reset it
+      processTimer = setTimeout(processFileChanges, 1500); // process change list after waiting time
     }
   });  
 }
 
 // --- MAIN PROGRAM ---
 config = readConfig();
-setInterval(zipChangedGerbers, 1500);
 detectFileChanges();
