@@ -188,12 +188,20 @@ function crossProcess(projectPath) { // combine info from BOM and PNP
 
 async function zipChangedGerbers() {
   for (const path in changedGerbers) { // get all paths where changes have occurred
-    log('Parsing', shortenPath(path));
+    log('Zipping gerbers in ' + shortenPath(path));
     const zip = new AdmZip();
     const outputFile = path + config.gerber.archiveName;
     for (const index in config.gerber.folders) {
       const folder = path + config.gerber.folders[index];
-      zip.addLocalFolder(folder);
+      if (fs.existsSync(folder)) {      
+        try {
+          zip.addLocalFolder(folder);
+        } catch (e) {
+          log('*** WARNING *** Error while compressing gerbers');
+        }
+      } else {
+        log('*** WARNING *** Folder configured but not found: ' + shortenPath(folder));
+      }
     }
     zip.writeZip(outputFile);
     log(`Written ${outputFile}`);  
