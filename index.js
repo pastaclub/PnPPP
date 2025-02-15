@@ -216,8 +216,8 @@ function processFileChanges() {
     delete changedFiles[fileName]; // changes are getting processed, so delete from list
   
     // read file and split into lines
-    log('Parsing '+shortenPath(fileName));
     var lines = fs.readFileSync(fileName).toString().split(/\r?\n/);
+    log('Parsing '+shortenPath(fileName)+ ' ('+lines.length+' lines)');
 
     // remove empty lines
     var text = '';
@@ -226,21 +226,24 @@ function processFileChanges() {
     // parse CSV
     csv.parse(text, {columns: true}, (err, data) => {
       if (err) quit('Unable to parse CSV');
-      if (data.length == 0) quit('File contains no data');
+      if (data.length == 0) {
+        log('*** WARNING *** CSV file contains no data: ' + fileName);
+      } else {
 
-      // if it's a BOM file
-      if (changeObj.bom) {
-        if (config.autoRotation.enabled && (!(Object.keys(data[0]).includes(config.autoRotation.parameter)))) {
-          log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
+        // if it's a BOM file
+        if (changeObj.bom) {
+          if (config.autoRotation.enabled && (!(Object.keys(data[0]).includes(config.autoRotation.parameter)))) {
+            log('*** WARNING *** auto-rotation parameter "'+config.autoRotation.parameter+'" not found in BOM. Check export config in your CAD tool')
+          }
+          processBom(data, changeObj.bom);
         }
-        processBom(data, changeObj.bom);
-      }
 
-      // if it's a PNP file
-      if (changeObj.pnp) {
-        processPnp(data, changeObj.pnp);
-      }
+        // if it's a PNP file
+        if (changeObj.pnp) {
+          processPnp(data, changeObj.pnp);
+        }
 
+      }
     }); 
   }
 }
